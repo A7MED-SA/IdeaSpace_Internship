@@ -47,8 +47,8 @@ class OllamaClient:
     
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
-        self.embedding_model = "nomic-embed-text:latest"  # أو "mxbai-embed-large"
-        self.llm_model = "gemma3:1b"
+        self.embedding_model = "nomic-embed-text"  # أو "mxbai-embed-large"
+        self.llm_model = "gemma3:1.7b"
     
     def get_embedding(self, text: str) -> np.ndarray:
         """الحصول على embedding من Ollama"""
@@ -112,8 +112,11 @@ class CVRankingSystem:
     def __init__(
         self,
         ollama_url: str = "http://localhost:11434",
-        cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        embedding_model: str = "nomic-embed-text",
+        llm_model: str = "gemma3:1.7b",
+        cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-12-v2",  # نموذج أكبر وأدق
         use_llm: bool = True,
+        use_cross_encoder: bool = True,  # خيار تعطيل Cross-Encoder
         top_k_bi_encoder: int = 20
     ):
         """
@@ -121,6 +124,11 @@ class CVRankingSystem:
         
         Args:
             ollama_url: عنوان خادم Ollama
+            embedding_model: نموذج embeddings للبحث السريع
+                - "nomic-embed-text" (توازن) ⚡
+                - "embeddinggemma" (دقة عالية) 🏆
+                - "embeddinggemma:300m" (سرعة) 🚀
+            llm_model: نموذج Gemma للتحليل
             cross_encoder_model: نموذج Cross-Encoder لإعادة الترتيب
             use_llm: استخدام Gemma للتحليل المتقدم
             top_k_bi_encoder: عدد السير الذاتية المبدئية
@@ -128,7 +136,11 @@ class CVRankingSystem:
         print("🔄 تهيئة النظام...")
         
         # تهيئة Ollama Client
-        self.ollama = OllamaClient(base_url=ollama_url)
+        self.ollama = OllamaClient(
+            base_url=ollama_url,
+            embedding_model=embedding_model,
+            llm_model=llm_model
+        )
         
         # اختبار الاتصال بـ Ollama
         try:
@@ -140,9 +152,14 @@ class CVRankingSystem:
             raise
         
         # تحميل Cross-Encoder
-        print("🔄 تحميل Cross-Encoder...")
-        self.cross_encoder = CrossEncoder(cross_encoder_model)
-        print(f"✅ تم تحميل Cross-Encoder: {cross_encoder_model}")
+        self.use_cross_encoder = use_cross_encoder
+        if use_cross_encoder:
+            print("🔄 تحميل Cross-Encoder...")
+            self.cross_encoder = CrossEncoder(cross_encoder_model)
+            print(f"✅ تم تحميل Cross-Encoder: {cross_encoder_model}")
+        else:
+            print("⚠️ Cross-Encoder معطل - سيتم استخدام Embedding Scores فقط")
+            self.cross_encoder = None
         
         self.use_llm = use_llm
         self.top_k = top_k_bi_encoder
@@ -195,37 +212,50 @@ class CVRankingSystem:
         """
         إعادة الترتيب باستخدام Cross-Encoder (أكثر دقة)
         """
-        print(f"\n🎯 المرحلة 2: إعادة الترتيب باستخدام Cross-Encoder...")
+        print(f"\n🎯 المرحلة 2: إعادة الترتيب...")
         
         job_text = job.get_full_text()
-        pairs = [[job_text, cv.content] for cv, _ in candidate_cvs]
-        
-        # حساب الدرجات باستخدام Cross-Encoder
-        print("  جاري حساب الدرجات...")
-        cross_scores = self.cross_encoder.predict(pairs)
         
         # إنشاء قائمة مرتبة
         ranked_cvs = []
-        for (cv, bi_score), cross_score in zip(candidate_cvs, cross_scores):
-            ranked_cv = RankedCV(
-                cv=cv,
-                bi_encoder_score=bi_score,
-                cross_encoder_score=float(cross_score),
-                final_score=float(cross_score)
-            )
-            ranked_cvs.append(ranked_cv)
+        
+        if self.cross_encoder:
+            # استخدام Cross-Encoder
+            print("  جاري حساب الدرجات باستخدام Cross-Encoder...")
+            pairs = [[job_text, cv.content] for cv, _ in candidate_cvs]
+            cross_scores = self.cross_encoder.predict(pairs)
+            
+            for (cv, bi_score), cross_score in zip(candidate_cvs, cross_scores):
+                ranked_cv = RankedCV(
+                    cv=cv,
+                    bi_encoder_score=bi_score,
+                    cross_encoder_score=float(cross_score),
+                    final_score=float(cross_score)
+                )
+                ranked_cvs.append(ranked_cv)
+        else:
+            # استخدام Embedding scores فقط
+            print("  استخدام Embedding Scores للترتيب...")
+            for cv, bi_score in candidate_cvs:
+                ranked_cv = RankedCV(
+                    cv=cv,
+                    bi_encoder_score=bi_score,
+                    cross_encoder_score=bi_score,  # نفس القيمة
+                    final_score=bi_score
+                )
+                ranked_cvs.append(ranked_cv)
         
         # ترتيب تنازلي حسب الدرجة النهائية
         ranked_cvs.sort(key=lambda x: x.final_score, reverse=True)
         
-        print(f"✅ تم إعادة ترتيب السير الذاتية بدقة عالية")
+        print(f"✅ تم إعادة الترتيب بنجاح")
         return ranked_cvs
     
     def llm_analysis(
         self,
         job: JobPosting,
         ranked_cvs: List[RankedCV],
-        top_n: int = 5
+        top_n: int = 10  # زيادة من 5 إلى 10
     ) -> List[RankedCV]:
         """
         تحليل متقدم باستخدام Gemma للسير الذاتية الأفضل
@@ -317,20 +347,38 @@ Analysis:"""
         print("="*80)
         
         for i, ranked_cv in enumerate(ranked_cvs[:top_n], 1):
-            print(f"\n🏆 المرتبة {i}:")
+            # تحديد الأيقونة حسب الدرجة
+            if ranked_cv.final_score >= 2.0:
+                icon = "🥇"
+            elif ranked_cv.final_score >= 0.5:
+                icon = "🥈"
+            elif ranked_cv.final_score >= 0:
+                icon = "🥉"
+            else:
+                icon = "📄"
+            
+            print(f"\n{icon} المرتبة {i}:")
             print(f"   الاسم: {ranked_cv.cv.name}")
             print(f"   ID: {ranked_cv.cv.id}")
             if ranked_cv.cv.email:
                 print(f"   Email: {ranked_cv.cv.email}")
             print(f"   درجة Embedding: {ranked_cv.bi_encoder_score:.4f}")
             print(f"   درجة Cross-Encoder: {ranked_cv.cross_encoder_score:.4f}")
-            print(f"   الدرجة النهائية: {ranked_cv.final_score:.4f}")
+            print(f"   ⭐ الدرجة النهائية: {ranked_cv.final_score:.4f}")
             
             if ranked_cv.llm_analysis:
                 print(f"\n   📝 تحليل Gemma:")
-                for line in ranked_cv.llm_analysis.split('\n'):
-                    if line.strip():
+                # تنظيف وتقصير التحليل
+                analysis = ranked_cv.llm_analysis.strip()
+                # إزالة الأجزاء المكررة أو غير المفيدة
+                if "Overall Assessment:" in analysis:
+                    analysis = analysis.split("Overall Assessment:")[0] + "Overall Assessment:" + analysis.split("Overall Assessment:")[-1].split("\n")[0]
+                
+                for line in analysis.split('\n')[:10]:  # أول 10 أسطر فقط
+                    if line.strip() and not line.strip().startswith("---"):
                         print(f"      {line.strip()}")
+            else:
+                print(f"\n   ⚠️ لم يتم تحليل هذه السيرة الذاتية")
             
             print("-"*80)
     
@@ -354,6 +402,43 @@ Analysis:"""
             json.dump(results_dict, f, ensure_ascii=False, indent=2)
         
         print(f"\n💾 تم حفظ النتائج في: {filename}")
+    
+    def analyze_ranking(self, ranked_cvs: List[RankedCV]):
+        """تحليل النتائج وشرح الترتيب"""
+        print("\n" + "="*80)
+        print("📈 تحليل إحصائي للنتائج")
+        print("="*80)
+        
+        embedding_scores = [cv.bi_encoder_score for cv in ranked_cvs]
+        cross_scores = [cv.cross_encoder_score for cv in ranked_cvs]
+        
+        print(f"\n📊 إحصائيات Embedding Scores:")
+        print(f"   المتوسط: {np.mean(embedding_scores):.4f}")
+        print(f"   الأعلى: {np.max(embedding_scores):.4f}")
+        print(f"   الأدنى: {np.min(embedding_scores):.4f}")
+        
+        print(f"\n🎯 إحصائيات Cross-Encoder Scores:")
+        print(f"   المتوسط: {np.mean(cross_scores):.4f}")
+        print(f"   الأعلى: {np.max(cross_scores):.4f}")
+        print(f"   الأدنى: {np.min(cross_scores):.4f}")
+        
+        print(f"\n🏆 أفضل 3 مرشحين:")
+        for i, cv in enumerate(ranked_cvs[:3], 1):
+            print(f"   {i}. {cv.cv.name} - الدرجة: {cv.final_score:.4f}")
+        
+        print(f"\n📉 أسوأ 3 مرشحين:")
+        for i, cv in enumerate(ranked_cvs[-3:], len(ranked_cvs)-2):
+            print(f"   {i}. {cv.cv.name} - الدرجة: {cv.final_score:.4f}")
+        
+        # تحليل الفجوات
+        print(f"\n🔍 تحليل الفجوات:")
+        excellent = sum(1 for cv in ranked_cvs if cv.final_score >= 2.0)
+        good = sum(1 for cv in ranked_cvs if 0 <= cv.final_score < 2.0)
+        weak = sum(1 for cv in ranked_cvs if cv.final_score < 0)
+        
+        print(f"   ممتاز (>= 2.0): {excellent} مرشح")
+        print(f"   جيد (0 - 2.0): {good} مرشح")
+        print(f"   ضعيف (< 0): {weak} مرشح")
 
 
 # =============================================================================
@@ -461,104 +546,121 @@ def main():
             email="layla@example.com",
             phone="+20 101 888 9999"
         ),
-     CV(
-        id="CV007",
-        name="Youssef Mahmoud",
-        content="""
-        Tech Lead with 8 years of Python experience. Led multiple teams in building
-        large-scale Django applications. Expert in microservices architecture with FastAPI.
-        Extensive experience with PostgreSQL optimization and Redis clustering.
-        Kubernetes certified administrator with 3 years production experience.
-        Managed ML pipelines for NLP projects including sentiment analysis and text classification.
-        Skills: Python, Django, FastAPI, PostgreSQL, Redis, Docker, Kubernetes, ML, NLP, AWS, Microservices
-        """,
-        email="youssef@example.com",
-        phone="+20 133 444 5555"
-    ),
-    CV(
-        id="CV008", 
-        name="Nadia Salem",
-        content="""
-        Mid-level Python Developer with 4 years experience. Strong in Django development
-        and REST API design. Good knowledge of PostgreSQL and basic Redis usage.
-        Some experience with Docker containers but limited Kubernetes exposure.
-        Basic understanding of machine learning concepts from university courses.
-        Quick learner and strong problem-solving abilities.
-        Skills: Python, Django, Flask, PostgreSQL, Redis, Docker, Git, REST APIs
-        """,
-        email="nadia@example.com",
-        phone="+20 144 555 6666"
-    ),
-    CV(
-        id="CV009",
-        name="Mohammed Abdel-Rahman",
-        content="""
-        Junior Developer with 6 months internship experience. Learned Python through
-        online courses and bootcamps. Basic knowledge of Django framework.
-        Familiar with SQL databases but no production experience with PostgreSQL or Redis.
-        Eager to learn and develop skills in web development and machine learning.
-        Skills: Python, Django Basics, SQL, HTML/CSS, Git
-        """,
-        email="mohammed@example.com",
-        phone="+20 155 666 7777"
-    ),
-    CV(
-        id="CV010",
-        name="Hana El-Sayed",
-        content="""
-        Frontend Developer with 2 years React experience. Some Python knowledge
-        from personal projects but no professional backend development experience.
-        Built small Flask applications for learning purposes. Strong in JavaScript
-        and modern frontend frameworks. Looking to transition to full-stack development.
-        Skills: JavaScript, React, HTML/CSS, Python Basics, Flask Basics
-        """,
-        email="hana@example.com",
-        phone="+20 166 777 8888"
-    ),
-    CV(
-        id="CV011",
-        name="Tarek Nasser",
-        content="""
-        Senior Java Developer with 10 years enterprise experience. Recently learned
-        Python for data analysis and automation scripts. No professional Django/FastAPI
-        experience but strong software engineering fundamentals. Experience with
-        containerization and cloud platforms. Quick to learn new technologies.
-        Skills: Java, Spring Boot, Python, SQL, Docker, AWS, System Design
-        """,
-        email="tarek@example.com",
-        phone="+20 177 888 9999"
-    ),
-    CV(
-        id="CV012",
-        name="Rania Fawzy",
-        content="""
-        Data Scientist with 4 years ML/NLP experience. Strong Python skills with
-        focus on data analysis and model development. Some experience with FastAPI
-        for model deployment. Limited knowledge of Django and traditional web development.
-        Good with PostgreSQL for data storage. Strong problem-solving and analytical skills.
-        Skills: Python, Machine Learning, NLP, FastAPI, PostgreSQL, Pandas, Scikit-learn, Docker
-        """,
-        email="rania@example.com",
-        phone="+20 188 999 0000"
-    )
-]
+        CV(
+            id="CV007",
+            name="Youssef Mahmoud",
+            content="""
+            Tech Lead with 8 years of Python experience. Led multiple teams in building
+            large-scale Django applications. Expert in microservices architecture with FastAPI.
+            Extensive experience with PostgreSQL optimization and Redis clustering.
+            Kubernetes certified administrator with 3 years production experience.
+            Managed ML pipelines for NLP projects including sentiment analysis and text classification.
+            Skills: Python, Django, FastAPI, PostgreSQL, Redis, Docker, Kubernetes, ML, NLP, AWS, Microservices
+            """,
+            email="youssef@example.com",
+            phone="+20 133 444 5555"
+        ),
+        CV(
+            id="CV008", 
+            name="Nadia Salem",
+            content="""
+            Mid-level Python Developer with 4 years experience. Strong in Django development
+            and REST API design. Good knowledge of PostgreSQL and basic Redis usage.
+            Some experience with Docker containers but limited Kubernetes exposure.
+            Basic understanding of machine learning concepts from university courses.
+            Quick learner and strong problem-solving abilities.
+            Skills: Python, Django, Flask, PostgreSQL, Redis, Docker, Git, REST APIs
+            """,
+            email="nadia@example.com",
+            phone="+20 144 555 6666"
+        ),
+        CV(
+            id="CV009",
+            name="Mohammed Abdel-Rahman",
+            content="""
+            Junior Developer with 6 months internship experience. Learned Python through
+            online courses and bootcamps. Basic knowledge of Django framework.
+            Familiar with SQL databases but no production experience with PostgreSQL or Redis.
+            Eager to learn and develop skills in web development and machine learning.
+            Skills: Python, Django Basics, SQL, HTML/CSS, Git
+            """,
+            email="mohammed@example.com",
+            phone="+20 155 666 7777"
+        ),
+        CV(
+            id="CV010",
+            name="Hana El-Sayed",
+            content="""
+            Frontend Developer with 2 years React experience. Some Python knowledge
+            from personal projects but no professional backend development experience.
+            Built small Flask applications for learning purposes. Strong in JavaScript
+            and modern frontend frameworks. Looking to transition to full-stack development.
+            Skills: JavaScript, React, HTML/CSS, Python Basics, Flask Basics
+            """,
+            email="hana@example.com",
+            phone="+20 166 777 8888"
+        ),
+        CV(
+            id="CV011",
+            name="Tarek Nasser",
+            content="""
+            Senior Java Developer with 10 years enterprise experience. Recently learned
+            Python for data analysis and automation scripts. No professional Django/FastAPI
+            experience but strong software engineering fundamentals. Experience with
+            containerization and cloud platforms. Quick to learn new technologies.
+            Skills: Java, Spring Boot, Python, SQL, Docker, AWS, System Design
+            """,
+            email="tarek@example.com",
+            phone="+20 177 888 9999"
+        ),
+        CV(
+            id="CV012",
+            name="Rania Fawzy",
+            content="""
+            Data Scientist with 4 years ML/NLP experience. Strong Python skills with
+            focus on data analysis and model development. Some experience with FastAPI
+            for model deployment. Limited knowledge of Django and traditional web development.
+            Good with PostgreSQL for data storage. Strong problem-solving and analytical skills.
+            Skills: Python, Machine Learning, NLP, FastAPI, PostgreSQL, Pandas, Scikit-learn, Docker
+            """,
+            email="rania@example.com",
+            phone="+20 188 999 0000"
+        )
+    ]
     
     # 3. تهيئة النظام
     # تأكد من تشغيل Ollama أولاً: ollama serve
     # وتحميل النماذج: ollama pull gemma2 && ollama pull nomic-embed-text
     
     try:
+        # Option 1: استخدام Embedding Scores فقط (أكثر موثوقية)
         system = CVRankingSystem(
             ollama_url="http://localhost:11434",
-            use_llm=True,  # تفعيل Gemma للتحليل المتقدم
-            top_k_bi_encoder=10  # عدد السير المبدئية
+            embedding_model="nomic-embed-text",
+            llm_model="gemma3:1.7b",
+            use_llm=True,
+            use_cross_encoder=False,  # تعطيل Cross-Encoder
+            top_k_bi_encoder=12  # كل السير
         )
+        
+        # Option 2: استخدام Cross-Encoder (قد يعطي نتائج غير متوقعة)
+        # system = CVRankingSystem(
+        #     embedding_model="nomic-embed-text",
+        #     llm_model="gemma2:2b",
+        #     use_llm=True,
+        #     use_cross_encoder=True,
+        #     cross_encoder_model="cross-encoder/ms-marco-MiniLM-L-12-v2",
+        #     top_k_bi_encoder=10
+        # )
         
         # 4. ترتيب السير الذاتية
         ranked_results = system.rank_cvs(job, cvs, use_llm_analysis=True)
         
         # 5. عرض النتائج
-        system.print_results(ranked_results, top_n=6)
+        system.print_results(ranked_results, top_n=12)  # عرض الكل
+        
+        # 5.5 تحليل النتائج
+        system.analyze_ranking(ranked_results)
         
         # 6. حفظ النتائج
         system.save_results(ranked_results)
@@ -567,9 +669,21 @@ def main():
         print(f"\n❌ حدث خطأ: {str(e)}")
         print("\n💡 تأكد من:")
         print("   1. تشغيل Ollama: ollama serve")
-        print("   2. تحميل النماذج:")
-        print("      - ollama pull gemma2")
-        print("      - ollama pull nomic-embed-text")
+        print("   2. تحميل النماذج المطلوبة:")
+        print("\n   🎯 للتوازن (موصى به):")
+        print("      ollama pull nomic-embed-text")
+        print("      ollama pull gemma2:2b")
+        print("\n   🏆 للدقة القصوى:")
+        print("      ollama pull embeddinggemma")
+        print("      ollama pull gemma2:9b")
+        print("\n   🚀 للسرعة القصوى:")
+        print("      ollama pull embeddinggemma:300m")
+        print("      ollama pull gemma2:2b")
+        print("\n📝 ملاحظات:")
+        print("   - Embedding Score: يقيس التشابه السطحي (Cosine Similarity)")
+        print("   - Cross-Encoder Score: يقيس الملاءمة الحقيقية (أدق وأهم)")
+        print("   - الدرجة النهائية = Cross-Encoder Score (الأساس في الترتيب)")
+        print("   - درجة موجبة عالية (>2) = ممتاز | (0-2) = جيد | سالبة = ضعيف")
 
 
 if __name__ == "__main__":

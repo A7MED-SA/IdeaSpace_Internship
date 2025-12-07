@@ -1,0 +1,128 @@
+🔄 تهيئة النظام...
+✅ تم الاتصال بـ Ollama بنجاح! (Embedding model: embeddinggemma:300m)
+🔄 تحميل Cross-Encoder...
+✅ تم تحميل Cross-Encoder: cross-encoder/ms-marco-MiniLM-L-6-v2
+✅ تم تفعيل LLM للتحليل المتقدم (Model: gemma3:1b)
+✅ النظام جاهز للاستخدام!
+======================================================================
+🚀 بدء عملية ترتيب السير الذاتية
+======================================================================
+🔄 تحويل معلومات الوظيفة إلى embedding...
+🔄 تحويل 12 سيرة ذاتية إلى embeddings...
+  جاري المعالجة: 12/12
+
+🔍 المرحلة 1: البحث الأولي باستخدام Embeddings...
+✅ تم اختيار أفضل 10 سيرة ذاتية
+
+🎯 المرحلة 2: إعادة الترتيب باستخدام Cross-Encoder...
+  جاري حساب الدرجات...
+✅ تم إعادة ترتيب السير الذاتية بدقة عالية
+
+🤖 المرحلة 3: التحليل المتقدم باستخدام Gemma لأفضل 5 سير ذاتية...
+  🔄 تحليل السيرة الذاتية 1/5... ✅
+  🔄 تحليل السيرة الذاتية 2/5... ✅
+  🔄 تحليل السيرة الذاتية 3/5... ✅
+  🔄 تحليل السيرة الذاتية 4/5... ✅
+  🔄 تحليل السيرة الذاتية 5/5... ✅
+
+======================================================================
+✅ اكتملت عملية الترتيب بنجاح!
+======================================================================
+
+📊 أفضل 6 سير ذاتية:
+================================================================================
+
+🏆 المرتبة 1:
+   الاسم: Ahmed Mohamed
+   ID: CV001
+   Email: ahmed@example.com
+   درجة Embedding: 0.8005
+   درجة Cross-Encoder: 3.3023
+   الدرجة النهائية: 3.3023
+
+   📝 تحليل Gemma:
+      Okay, here’s a concise analysis of this CV against the job posting, focusing on strengths, matching skills, gaps, and overall assessment:
+      **Analysis:**
+      This CV demonstrates a solid foundation in Python development, particularly with Django and FastAPI. It highlights significant experience with large-scale web applications and a strong understanding of key technologies like PostgreSQL, Redis, Docker, and Kubernetes. The inclusion of ML/NLP experience and leadership experience is a significant plus, aligning well with the job description. While it lacks explicit experience with specific machine learning frameworks or NLP libraries, the skills listed are broadly relevant.  **Overall, this CV is very good – it effectively showcases the candidate’s experience and aligns well with the requirements.**
+--------------------------------------------------------------------------------
+
+🏆 المرتبة 2:
+   الاسم: Tarek Nasser
+   ID: CV011
+   Email: tarek@example.com
+   درجة Embedding: 0.7368
+   درجة Cross-Encoder: 1.1538
+   الدرجة النهائية: 1.1538
+
+   📝 تحليل Gemma:
+      Okay, here’s an analysis of the CV against the job posting, focusing on strengths, matching skills, gaps, and overall assessment:
+      **Analysis:**
+      **1. Main Strengths:** The CV clearly highlights a solid software engineering background (10 years), demonstrating a strong foundation. The recent addition of Python is a positive, showing a proactive learning mindset.  The listed skills – Java, Spring Boot, Python, SQL, Docker, AWS, and System Design – are all highly relevant to the job description, particularly the Django/FastAPI focus.
+      **2. Matching Skills:** The CV significantly matches the core requirements of the job posting. The years of experience, Django/FastAPI knowledge, and specific technologies (PostgreSQL, Redis, Docker, Kubernetes) are all crucial. The ML/NLP experience is a significant plus, which the CV explicitly states is desirable.
+      **3. Gaps/Weaknesses:** The biggest gap is the lack of Django/FastAPI experience. While the CV mentions foundational software engineering, it doesn’t demonstrate a commitment to the specific framework used in the job description. It’s a somewhat lukewarm profile.
+      **4. Overall Assessment:** **Very Good.** The CV demonstrates a solid foundation and a willingness to learn, which is valuable. However, it needs to explicitly showcase the Python experience and demonstrate a deeper understanding of Django/FastAPI to significantly improve its chances of landing an interview.
+      ---
+      To help me refine this
+--------------------------------------------------------------------------------
+
+🏆 المرتبة 3:
+   الاسم: Nadia Salem
+   ID: CV008
+   Email: nadia@example.com
+   درجة Embedding: 0.8069
+   درجة Cross-Encoder: 0.4995
+   الدرجة النهائية: 0.4995
+
+   📝 تحليل Gemma:
+      Okay, here’s an analysis of the CV against the job posting, focusing on strengths, matching skills, gaps, and an overall assessment:
+      **Analysis:**
+      **1. Main Strengths:** The CV clearly highlights experience with Django and FastAPI, demonstrating a solid foundation in web development. The mention of PostgreSQL and Redis is also a significant plus, aligning with the requirements. The candidate’s familiarity with Docker and Kubernetes suggests a willingness to learn and contribute to modern deployment practices.
+      **2. Matching Skills:** The CV’s experience with Django, REST APIs, PostgreSQL, Redis, Docker, and Kubernetes *directly* matches the core requirements of the Senior Python Developer role. The mention of ML/NLP as a plus demonstrates a desire to expand skillset and potentially contribute to a more complex project.
+      **3. Gaps/Weaknesses:** The biggest gap is the lack of significant experience (4 years) compared to the 5+ years requirement. While the candidate has foundational knowledge, it’s not a substantial level of expertise. The limited Kubernetes exposure is a concern – while familiarity is good, deep understanding is needed for production deployments.
+      **4. Overall Assessment:** **Fair**. The CV demonstrates a solid foundation but falls slightly short of the required level of experience for the senior role.  It's a good starting point, but further experience and deeper knowledge of containerization and deployment strategies would be beneficial.
+      ---
+      To give a more tailored assessment, could you
+--------------------------------------------------------------------------------
+
+🏆 المرتبة 4:
+   الاسم: Omar Hassan
+   ID: CV003
+   Email: omar@example.com
+   درجة Embedding: 0.7585
+   درجة Cross-Encoder: 0.0623
+   الدرجة النهائية: 0.0623
+
+   📝 تحليل Gemma:
+      Okay, here’s an analysis of the CV against the job posting, focusing on strengths, matching skills, gaps, and overall assessment:
+      **Analysis:**
+      **1. Main Strengths:** The CV clearly highlights significant experience with Python development, particularly with Django and FastAPI, and demonstrates a strong foundation in cloud technologies (Docker, Kubernetes, AWS). The inclusion of ML/NLP experience and a relevant AWS certification further strengthens the candidate’s profile.
+      **2. Matching Skills:** The CV *strongly* matches the job posting’s requirements. It demonstrates 5+ years of experience, expertise in key technologies (Django, FastAPI, PostgreSQL, Redis, Docker, Kubernetes), and a focus on ML/NLP. The mention of MLOps experience and open-source contributions is a significant plus.
+      **3. Gaps/Weaknesses:** The CV is somewhat broad – it mentions a “Full Stack Developer” experience, which isn't explicitly Python development. While the skills listed are relevant, the CV lacks specific, impactful examples of these skills in previous roles.  It doesn't showcase a deep understanding of the ML/NLP concepts mentioned in the job description.
+      **4. Overall Assessment:** **Very Good**. The CV is well-structured and demonstrates a solid foundation, but it needs to be supplemented with concrete examples of how these skills have been applied in previous roles to better align with the specific requirements of the Senior Python Developer position.  Adding a project description
+--------------------------------------------------------------------------------
+
+🏆 المرتبة 5:
+   الاسم: Youssef Mahmoud
+   ID: CV007
+   Email: youssef@example.com
+   درجة Embedding: 0.7661
+   درجة Cross-Encoder: -0.0397
+   الدرجة النهائية: -0.0397
+
+   📝 تحليل Gemma:
+      Okay, here’s a concise analysis of this CV against the job posting, focusing on strengths, matching skills, gaps, and overall assessment:
+      **Analysis:**
+      This CV demonstrates a strong foundation in Python development with a significant focus on scalable web applications and machine learning.  The experience with Django, FastAPI, PostgreSQL, Redis, Docker, and Kubernetes is particularly well-represented, showcasing a solid technical skillset.  The ML/NLP experience is a major plus, indicating a potential fit for the role. However, the lack of explicit experience with AWS (mentioning it but not including it) and a lack of specific experience with a particular NLP task (like sentiment analysis) could be a slight weakness.  Overall, it’s a very good fit, particularly for a role that heavily emphasizes backend development and ML.
+      **Rating: Excellent** (4/5 stars)
+--------------------------------------------------------------------------------
+
+🏆 المرتبة 6:
+   الاسم: Sara Ali
+   ID: CV002
+   Email: sara@example.com
+   درجة Embedding: 0.6889
+   درجة Cross-Encoder: -0.0809
+   الدرجة النهائية: -0.0809
+--------------------------------------------------------------------------------
+
+💾 تم حفظ النتائج في: cv_ranking_results.json
